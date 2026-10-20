@@ -46,7 +46,7 @@ export function ItemList({ items }: { items: readonly Item[] }) {
                 key={item.id}
                 aria-posinset={row.index + 1}
                 aria-setsize={items.length}
-                className="absolute left-0 top-0 flex w-full items-center justify-between gap-3 border-b border-border px-4 hover:bg-background sm:px-6"
+                className="absolute left-0 top-0 flex w-full items-center justify-between gap-3 border-b border-border px-4 hover:bg-surface-hover sm:px-6"
                 style={{
                   height: rowHeight,
                   transform: `translateY(${row.start}px)`,

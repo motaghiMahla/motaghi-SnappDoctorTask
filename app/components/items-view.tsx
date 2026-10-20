@@ -34,7 +34,7 @@ export function ItemsView() {
             </h1>
           </div>
           <p className="text-sm text-muted">
-            <span className="font-semibold tabular-nums text-foreground">
+            <span className="font-semibold tabular-nums text-primary">
               {items.length.toLocaleString("en-US")}
             </span>{" "}
             total items
@@ -49,7 +49,10 @@ export function ItemsView() {
           onReset={() => setFilters(defaultFilters)}
         />
         <p role="status" className="mb-3 text-sm text-muted">
-          {filteredItems.length.toLocaleString("en-US")} matching items
+          <span className="font-semibold tabular-nums text-primary">
+            {filteredItems.length.toLocaleString("en-US")}
+          </span>{" "}
+          matching items
         </p>
         <ItemList key={JSON.stringify(filters)} items={filteredItems} />
       </div>

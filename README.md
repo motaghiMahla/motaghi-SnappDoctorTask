@@ -1,36 +1,159 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# کاتالوگ آیتم‌ها
 
-## Getting Started
+## معرفی پروژه
 
-First, run the development server:
+این پروژه برای پیاده‌سازی Search و Filter روی ۱۰۰ هزار آیتم ساخته شده. تمرکز اصلی روی سرعت فیلتر کردن داده‌ها، پاسخ‌گویی رابط کاربری و نمایش بهینهٔ لیست است. پروژه از `Next.js 16.4.2`، `React 19.3.0`، `TypeScript` و `Tailwind CSS` استفاده می‌کند.
+
+## امکانات
+
+- جست‌وجوی بخشی از نام، بدون حساسیت به بزرگی حروف و با حذف فاصله‌های ابتدا و انتها.
+- ترکیب دسته‌بندی، حداقل و حداکثر قیمت و وضعیت با منطق `AND`.
+- نمایش تعداد نتایج، Reset Filters و پیام مناسب برای نتیجهٔ خالی.
+- نمایش لیست با `TanStack Virtual` در یک رابط سفید و responsive.
+
+## نصب و اجرا
+
+پروژه با `Node.js v24.21.0` و `pnpm 10.12.4` اجرا و بررسی شده است. پس از clone کردن مخزن، در پوشهٔ پروژه اجرا کنید:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install --frozen-lockfile
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+برنامه در [localhost:3000](http://localhost:3000) در دسترس است. برای اجرای نسخهٔ Production:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm build
+pnpm start
+```
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+داده‌ها داخل برنامه تولید می‌شوند؛ نیازی به API یا متغیر محیطی نیست. نصب وابستگی‌ها و دریافت فونت‌های `next/font/google` هنگام build به اینترنت نیاز دارد.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ساختار پروژه و تصمیم‌های فنی
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`app/page.tsx` یک Server Component ساده است و مسیر `/` در خروجی Production Build به‌صورت Static Prerender می‌شود (SSG). کامپوننت `ItemsView` در `app/components/items-view.tsx` وضعیت فیلترها را نگه می‌دارد و نتایج را با `useMemo` محاسبه می‌کند. نتیجه‌ها state جداگانه ندارند. داده‌ها با `generateItems(100_000)` در سطح ماژول ساخته می‌شوند، نه در هر رندر؛ سرور و مرورگر هرکدام مقداردهی مستقل دارند.
 
-## Deploy on Vercel
+تابع خالص `filterItems` در `lib/items/filter-items.ts` مستقل از React است. شرایط فعال را قبل از پیمایش آماده می‌کند و در یک گذر، آیتم‌های نامنطبق را زود کنار می‌گذارد. ورودی‌ها تغییر نمی‌کنند. حداقل و حداکثر قیمت شامل مقدار مرزی هستند و `null` یعنی آن محدودیت فعال نیست.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`ItemFilters` چیدمان فرم و رویدادهای submit و reset را مدیریت می‌کند. کنترل‌های Search، Category، Status، Price Range و Reset در کامپوننت‌های جدا هستند و مقدار و callback می‌گیرند. قالب‌بندی قیمت هم در `lib/utils/format-price.ts` با یک نمونهٔ مشترک `Intl.NumberFormat` و تنظیمات `en-US` و `USD` انجام می‌شود.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`ItemList` در `app/components/item-list.tsx` فقط ردیف‌های قابل‌مشاهده و حاشیهٔ `overscan: 5` را رندر می‌کند. ارتفاع ردیف‌ها `88px` است و `key` هر ردیف از شناسهٔ آیتم می‌آید. خود `ItemList` دیگر `key` وابسته به فیلتر ندارد و هنگام تغییر معیارها، کامپوننت و Virtualizer همچنان mounted می‌مانند. با تغییر آرایهٔ نتایج فیلترشده، `useLayoutEffect` متد `scrollToOffset(0, { behavior: "auto" })` را فراخوانی می‌کند تا پیمایش قبل از نمایش فریم بعدی به ابتدای لیست برگردد. این روش برای نتایج خالی هم قابل استفاده است.
+
+فعلاً ورودی و نتایج همگام به‌روز می‌شوند. اندازه‌گیری‌ها نیاز روشنی به `useDeferredValue`، debounce یا Web Worker نشان ندادند؛ بنابراین این پیچیدگی‌ها و کتابخانهٔ مدیریت state اضافه نشده‌اند.
+
+## تست‌ها
+
+برای تابع فیلتر، ۲۷ تست Jest نوشته شده که همگی پاس می‌شوند. فایل `lib/items/filter-items.test.ts` جست‌وجو، فیلترهای ترکیبی، مرزهای شامل قیمت، قیمت اعشاری، حالت `minPrice > maxPrice`، وضعیت، عدم تغییر ورودی‌ها، آرایهٔ خالی و حفظ ترتیب را پوشش می‌دهد. Jest با `next/jest` و محیط `node` تنظیم شده است.
+
+```bash
+pnpm exec tsc --noEmit
+pnpm test
+pnpm lint
+pnpm build
+```
+
+
+برای اجرای تست‌ها در حالت watch از `pnpm test:watch` استفاده کنید. TypeScript و build موفق‌اند؛ lint بدون خطا و هشدار پایان می‌یابد. بررسی خودکار در مرورگر نیز عملکرد کنترل‌ها، Reset، نتیجهٔ خالی، تغییر سریع جست‌وجو، بازنشانی پیمایش و نبود سرریز افقی در نمای موبایل را پوشش داده است. این اسکریپت‌های موقت جزو تست‌های مخزن نیستند.
+
+در تست دستی رابط کاربری، Search و همهٔ فیلترها درست کار کردند؛ گروه‌های مختلف فیلتر با منطق `AND` ترکیب شدند و با تغییر فیلترها، پیمایش لیست به ابتدا برگشت. در این تست، تأخیر محسوسی در UI مشاهده نشد. این مشاهده مربوط به همان جلسهٔ تست است، نه تضمین عملکرد روی همهٔ دستگاه‌ها.
+
+## نتایج Performance
+
+تعامل‌های رابط کاربری روی نسخهٔ Production و توابع تولید داده و فیلتر در یک صفحهٔ مجزای مرورگر اندازه‌گیری شدند. زمان‌های جدول بر حسب `ms` هستند؛ `p95` یعنی صدک ۹۵.
+
+| Operation | Median (ms) | p95 (ms) |
+| --- | ---: | ---: |
+| Generate 100,000 items | 6.2 | 10.6 |
+| Filter with no active criteria | 0.8 | 1.0 |
+| Search: "item" | 2.5 | 3.2 |
+| Search + Category + Price + Status | 2.3 | 2.4 |
+| Synchronous input handling | 4.7 | 6.0 |
+
+
+لیست هنگام پیمایش بین ۱۳ تا ۱۹ ردیف در DOM داشت. میانهٔ فاصلهٔ فریم‌ها `16.7 ms` بود و در ۱۷۹ نمونه، فاصله‌ای بالاتر از `34 ms` ثبت نشد. در شبیه‌سازی کاهش سرعت CPU به میزان `4×`، بیشترین زمان پردازش همگام ورودی به `19 ms` رسید.
+
+مصرف JavaScript heap پس از Garbage Collection، ابتدا `8.74 MiB` و پس از تعامل‌ها `9.58 MiB` بود. سهم مجموعه‌داده در محیط مجزا حدود `5.79 MiB` اندازه‌گیری شد. این اعداد کل حافظهٔ مرورگر را نشان نمی‌دهند.
+
+**محیط اجرا:** `Linux x64`، پردازندهٔ `Intel Core i3-12100F` با ۸ پردازندهٔ منطقی، حدود `31 GiB RAM`، `Node.js v24.21.0` و `Chrome 152.0.7977.64` در حالت headless با viewport برابر `1280×900`.
+
+**روش اندازه‌گیری:** زمان‌سنجی با `performance.now()` انجام شد: ۲۰ نمونهٔ تولید داده بعد از ۵ اجرای warm-up، ۵۰ نمونه برای هر فیلتر بعد از ۱۰ اجرای warm-up و ۳۰ نمونهٔ ورودی بعد از ۱۰ تعامل warm-up. کد واقعی توابع پس از تبدیل TypeScript به JavaScript اجرا شد. تعامل‌ها با Chrome DevTools Protocol و رویدادهای مصنوعی DOM شبیه‌سازی شدند. سناریوی ترکیبی با `search: "Item 1"`، `category: "Electronics"`، `minPrice: 500`، `maxPrice: 2000` و `status: "active"`، تعداد ۲۲۲ نتیجه داشت.
+
+فاصلهٔ فریم‌ها با `requestAnimationFrame` و حافظه با `Runtime.getHeapUsage` پس از `HeapProfiler.collectGarbage` سنجیده شد. این آزمایش محلی، معیار واقعی INP یا تضمین Performance روی دستگاه‌های دیگر نیست. اسکریپت Benchmark در مخزن قرار ندارد. این Benchmarkها پیش از حذف remount وابسته به فیلتر ثبت شده‌اند و پس از آن تکرار نشده‌اند؛ اعداد جدول مقایسهٔ قبل و بعد نیستند.
+
+### React DevTools Profiler
+
+در پروفایل‌گیری از پیاده‌سازی فعلی، `261` commit در **Next.js Development Mode** ثبت شده است. زمان‌های Render زیر تقریبی‌اند:
+
+| Metric | Observation |
+| --- | ---: |
+| Recorded commits | 261 |
+| Median render duration | ≈ 7.8 ms |
+| P95 render duration | ≈ 10.4 ms |
+| Maximum render duration | ≈ 12.8 ms |
+
+
+این مشاهدات از Benchmarkهای Production بالا جدا هستند. بدون مقایسهٔ کنترل‌شده با سناریو، build mode، سخت‌افزار و نمونه‌گیری یکسان، نمی‌توان درصد بهبود یا رابطهٔ علت‌ومعلولی مستقیمی بین حذف remount و این زمان‌ها تعیین کرد.
+
+برای حفظ سابقه، پروفایل اولیه در Development Mode شامل `59` commit بود. در اولین commit بررسی‌شده، Render کل `7.9 ms`، سهم `ItemsView` برابر `3.6 ms` و سهم `ItemFilters` برابر `0.5 ms` بود. در commit شمارهٔ `45`، Render کل `18.6 ms` و سهم `ItemList` برابر `18.3 ms` بود؛ Layout effects و Passive effects هرکدام کمتر از `0.1 ms` طول کشیدند. در آن نسخه، تغییر `key` وابسته به فیلتر باعث remount لیست می‌شد. سهم حدود `98%` برای `ItemList` ثابت نمی‌کند که تمام زمان آن صرف مقداردهی اولیهٔ TanStack Virtual شده باشد. این تک‌commit نمایندهٔ میانگین نبود و مقایسهٔ مستقیم آن با میانه یا P95 پروفایل جدید معتبر نیست.
+
+## Lighthouse
+
+این ارزیابی با Lighthouse در Chrome DevTools روی `localhost` انجام شده و مستقل از Benchmarkهای JavaScript بالاست.
+
+| Metric | Score / 100 |
+| --- | ---: |
+| Performance | 100 |
+| Accessibility | 100 |
+| Best Practices | 96 |
+| SEO | 100 |
+
+| Metric | Time |
+| --- | ---: |
+| First Contentful Paint (FCP) | 0.2s |
+| Largest Contentful Paint (LCP) | 0.7s |
+
+
+امتیازها به محیط وابسته‌اند و بین اجراها و دستگاه‌ها تغییر می‌کنند؛ این نتایج Performance کاربران واقعی نیستند. امتیاز ۱۰۰ در Accessibility هم به‌تنهایی رعایت همهٔ الزامات دسترس‌پذیری را تضمین نمی‌کند و جای بررسی دستی را نمی‌گیرد.
+
+## استفاده از هوش مصنوعی (AI Assistance)
+
+در این پروژه از ابزارهای **ChatGPT** و **Codex** به‌عنوان دستیار توسعه استفاده شده است. کاربرد این ابزارها بیشتر شامل موارد زیر بوده است:
+
+- کمک به پیاده‌سازی و اصلاح استایل‌ها و بهبود ظاهر رابط کاربری.
+- مرتب‌سازی مستندات، بهبود ساختار README و خوانایی توضیحات.
+- کمک به آماده‌سازی و اجرای سناریوهای Benchmark.
+
+
+خروجی ابزارهای AI پیش از پذیرش بررسی شده و تصمیم‌گیری درباره تغییرات نهایی بر اساس نیازمندی‌های پروژه و نتایج تست‌ها انجام شده است.
+
+## بررسی عملکرد (Performance Analysis)
+
+علاوه بر Benchmarkهای ثبت‌شده، عملکرد پروژه به‌صورت دستی با ابزارهای توسعه‌دهندگان مرورگر بررسی شده است.
+
+**React DevTools Profiler**
+
+با استفاده از React DevTools Profiler، زمان Render کامپوننت‌ها و رفتار آن‌ها هنگام تغییر فیلترها بررسی شد. این بررسی به شناسایی Renderهای پرهزینه و اصلاح رفتار Remount شدن لیست هنگام تغییر فیلتر کمک کرد.
+
+پس از اصلاح، عملکرد فیلترها، حفظ Virtualizer و بازگشت Scroll به ابتدای نتایج مجدداً بررسی شد.
+
+**Chrome DevTools — Performance & Memory**
+
+از ابزارهای Performance و Memory مرورگر برای بررسی رفتار اپلیکیشن هنگام جست‌وجو، تغییر فیلترها و پیمایش لیست استفاده شد.
+
+مصرف حافظه و تغییرات آن در طول تعاملات بررسی شد تا نشانه‌های احتمالی رشد غیرعادی حافظه یا Memory Leak شناسایی شوند.
+
+در سناریوهای بررسی‌شده، نشانه مشخصی از افزایش غیرعادی و مداوم مصرف حافظه مشاهده نشد. البته این بررسی به معنی اثبات نبود Memory Leak در تمام شرایط و مرورگرها نیست.
+
+**تست دستی رابط کاربری**
+
+عملکرد ترکیبی فیلترها با منطق `AND`، تغییر سریع فیلترها، نمایش نتایج خالی، پیمایش لیست و بازگشت Scroll به ابتدای نتایج به‌صورت دستی بررسی شد. در این سناریوها لگ محسوسی در رابط کاربری مشاهده نشد.
+
+## محدودیت‌ها
+
+- فیلتر روی main thread اجرا می‌شود و با افزایش داده یا روی دستگاه ضعیف‌تر ممکن است تایپ کند شود. شبیه‌سازی `4×` جای آزمایش روی دستگاه واقعی را نمی‌گیرد.
+- Virtualization تعداد ردیف‌های DOM را کم می‌کند، اما همهٔ داده‌ها در حافظه می‌مانند. ارتفاع ردیف‌ها ثابت است؛ محتوای چندخطی یا ردیف با ارتفاع متغیر به تنظیم جداگانه نیاز دارد.
+- برای فراخوانی `useVirtualizer`، به دلیل محدودیت سازگاری TanStack Virtual با React Compiler، استثنای محدود و توضیح‌دار برای قانون `react-hooks/incompatible-library` ثبت شده است. کامپوننت با `"use no memo"` از بهینه‌سازی خودکار Compiler کنار گذاشته شده است. Next.js نیز دربارهٔ یک `package-lock.json` خارج از مخزن هشدار می‌دهد؛ این هشدار مانع build نشده است.
+- در بررسی دستی نسخهٔ Production، اولین تعامل‌های ماوس با Dropdown بومی گاهی INP بالای `500 ms` ثبت کردند، درحالی‌که تعامل‌های بعدی سبز بودند. علت این تفاوت قطعی مشخص نشد؛ این نتایج جای اندازه‌گیری کنترل‌شده را نمی‌گیرند.
+- داده‌ها ساختگی‌اند و اتصال به backend وجود ندارد. تست‌های کامپوننت React و E2E هم در مخزن اضافه نشده‌اند.

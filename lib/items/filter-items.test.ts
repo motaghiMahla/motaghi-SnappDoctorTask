@@ -72,6 +72,8 @@ describe("filterItems", () => {
       ["applies both bounds inclusively", 100, 200, [1, 2, 3, 4, 5, 6]],
       ["allows all prices when both bounds are null", null, null, [1, 2, 3, 4, 5, 6, 7, 8]],
       ["treats a zero maximum as an active bound", null, 0, [7]],
+      ["includes prices equal to both bounds", 200, 200, [2, 4]],
+      ["returns no items when the minimum exceeds the maximum", 200, 100, []],
     ])("%s", (_description, minPrice, maxPrice, expectedIds) => {
       const result = filterItems(items, {
         ...defaultFilters,
@@ -81,6 +83,20 @@ describe("filterItems", () => {
 
       expect(result.map((item) => item.id)).toEqual(expectedIds);
     });
+  });
+
+  it("preserves decimal precision and includes fractional price boundaries", () => {
+    const decimalItems: Item[] = [100.24, 100.25, 100.75, 100.76].map((price, id) => ({
+      id, name: `Item ${id}`, category: "electronics", price, status: "active",
+    }));
+
+    const result = filterItems(decimalItems, {
+      ...defaultFilters,
+      minPrice: 100.25,
+      maxPrice: 100.75,
+    });
+
+    expect(result.map((item) => item.price)).toEqual([100.25, 100.75]);
   });
 
   describe("status", () => {

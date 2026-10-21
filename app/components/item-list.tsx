@@ -15,6 +15,10 @@ export function ItemList({ items }: { items: readonly Item[] }) {
   const getItemKey = useCallback((index: number) => items[index].id, [items]);
    
  
+ 
+// TanStack Virtual exposes APIs that React Compiler cannot safely memoize.
+// This component is intentionally excluded from compiler optimization.
+// eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollRef.current,

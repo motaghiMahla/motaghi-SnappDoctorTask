@@ -54,7 +54,7 @@ export function ItemsView() {
           </span>{" "}
           matching items
         </p>
-        <ItemList key={JSON.stringify(filters)} items={filteredItems} />
+        <ItemList items={filteredItems} />
       </div>
     </main>
   );

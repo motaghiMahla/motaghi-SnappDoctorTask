@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Item } from "@/lib/items/types";
 import { formatPrice } from "@/lib/utils/format-price";
@@ -23,13 +23,18 @@ export function ItemList({ items }: { items: readonly Item[] }) {
     overscan: 5,
   });
 
+  useLayoutEffect(() => {
+
+    virtualizer.scrollToOffset(0, { behavior: "auto" });
+  }, [items, virtualizer]);
+
   return (
     <div
       ref={scrollRef}
       role="region"
       aria-label="Item catalog"
       tabIndex={0}
-      className="h-[min(640px,70dvh)] overflow-auto rounded-2xl border border-border bg-surface outline-offset-4 focus-visible:outline-2 focus-visible:outline-primary"
+      className="h-[min(640px,70dvh)] overflow-auto rounded-2xl border border-border bg-surface outline-offset-4 focus-visible:outline-2 focus-visible:outline-primary p-5"
     >
       {items.length === 0 ? (
         <ItemsEmptyState />
@@ -65,7 +70,7 @@ export function ItemList({ items }: { items: readonly Item[] }) {
                     {formatPrice(item.price)}
                   </p>
                   <span
-                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs capitalize ${
+                    className={`mt-1 inline-block rounded-full px-2 py-1 text-xs capitalize ${
                       item.status === "active"
                         ? "bg-emerald-50 text-emerald-800"
                         : "bg-slate-100 text-slate-600"
